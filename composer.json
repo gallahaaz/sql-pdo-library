@@ -1,0 +1,19 @@
+{
+    "name": "gallahaaz/sql-pdo-library",
+    "description": "A PHP class to manipulate sql data trough PDO",
+    "license": "MIT",
+    "keywords": ["sql", "query", "PDO"],
+    "authors": [
+        {
+            "name": "Kevin Gallahaaz",
+            "email": "kevin.gallahaaz@gmail.com"
+        }
+    ],
+    "require": {},
+    "require-dev": {},
+    "autoload": {
+        "psr-4": {
+            "Gallahaaz\\SqlPDOLibrary\\": "src"
+        }
+    }
+}
