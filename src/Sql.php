@@ -1,7 +1,6 @@
 <?php
 
 Namespace Gallahaaz\SqlPDOLibrary;
-
 use PDO;
 
 class Sql extends PDO {
@@ -14,11 +13,13 @@ class Sql extends PDO {
     ];
 
     public function __construct() {
-        $host = DBHOST;
-        $schema = DBSCHEMA;
-        $login = DBLOGIN;
-        $password = DBPASSWORD;
-        $this->sql = new PDO("mysql:host=$host;dbname=$schema", $login, $password );
+        try {
+            $this->sql = new PDO('mysql:host=' . DBHOSTNAME . ';dbname=' . DBSCHEMA . ';port=' . DBPORT, DBUSER, DBPASSWORD );
+        } catch (Exception $e) {
+            //echo 'Erro ao conectar' . $e;
+            die($e->getMessage());
+            //exit();
+        }
     }
 
     private function setParam($statment, $key, $value) {
@@ -26,9 +27,7 @@ class Sql extends PDO {
     }
 
     private function setParams($statment, $parameters = []) {
-        var_dump($parameters);
         foreach ( $parameters as $key => $value ) {
-            echo $key . " : " . $value;
             $this->setParam($statment, $key, $value);
         }
     }
@@ -51,19 +50,27 @@ class Sql extends PDO {
         $data = $stmt->fetchAll( PDO::FETCH_ASSOC );
         return $data[0];
     }
-    
-    public function select( $fields, $table, $parameters = null, $options = null ) {
+
+    public function select( $fields, $table, $parameters, $options = [ 'operator' => 'AND' ]  ) {
         $cmd = "SELECT "
             . $this->concatArray( $fields )
             . " FROM "
             . $table;
+        if( empty( $options['operator'] ) ){
+            $options['operator'] = "AND";
+        }
+        $concatCommand = 'concat' . ucfirst( $options['operator'] ) . 'Params';
         if( isset( $parameters ) ){
-            $cmd .= " WHERE " . $this->concatAndParams( $parameters );
+            $cmd .= " WHERE " . $this->$concatCommand( $parameters, $options );
         }
-        if( isset($options) ){
-            $cmd .= $options;
+        if( isset( $options['fetch'] ) ){
+            return $this->singleFetchAssoc( $cmd, $parameters);
+        }else{
+            if( isset( $options['additionalCommand'] ) ){
+                $cmd .= $options['additionalCommand'];
+            }
+            return $this->fetchAssoc( $cmd, $parameters );
         }
-        return $this->fetchAssoc( $cmd, $parameters );
     }
 
     public function insert( $table, $columns, $values ) {
@@ -108,7 +115,12 @@ class Sql extends PDO {
     public function call( $procedure, $arguments, $single = false ) {
         $cmd = "CALL " . $procedure
             . "(" . $this->concatArrayValues( $arguments ) . ")";
-        $this->fetchAssoc($cmd);
+        $res = $this->fetchAssoc($cmd);
+        if($single){
+            return $res[0];
+        }else{
+            return $res;
+        }
     }
     
     public function concatArray( $array ){
@@ -141,7 +153,7 @@ class Sql extends PDO {
         return $string;
     }
     
-    public function concatAndParams( $array ){
+    public function concatAndParams( $array, $options = null ){
         $string = '';
         $c = 0;
         $last = count( $array );
@@ -149,7 +161,47 @@ class Sql extends PDO {
             if( ( $c >= 1 ) &&( $c<$last ) ){
                 $string .= " AND ";
             }
-            $string .= $key . ' = :' . $key;
+            if( isset( $options['like'] ) ){
+                $string .= $key . ' LIKE :' . $key;
+            }else{
+                $string .= $key . ' = :' . $key;
+            }
+            $c++;
+        }
+        return $string;
+    }
+
+    public function concatOrParams( $array, $options = null ){
+        $string = '';
+        $c = 0;
+        $last = count( $array );
+        foreach( $array as $key => $value ){
+            if( ( $c >= 1 ) &&( $c<$last ) ){
+                $string .= " OR ";
+            }
+            if( isset( $options['like'] ) ){
+                $string .= $key . ' LIKE :' . $key;
+            }else{
+                $string .= $key . ' = :' . $key;
+            }
+            $c++;
+        }
+        return $string;
+    }
+    
+    public function concatListParams( $array, $options = null ){
+        $string = '';
+        $c = 0;
+        $last = count( $array );
+        foreach( $array as $key => $value ){
+            if( ( $c >= 1 ) &&( $c<$last ) ){
+                $string .= $options['conditionalList'][$c];
+            }
+            if( isset( $options['like'] ) ){
+                $string .= $key . ' LIKE :' . $key;
+            }else{
+                $string .= $key . ' = :' . $key;
+            }
             $c++;
         }
         return $string;
