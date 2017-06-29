@@ -43,22 +43,16 @@ class Sql extends PDO {
         $stmt = $this->query( $rawQuery, $params );
         return $stmt->fetchAll( PDO::FETCH_ASSOC );
     }
-    
-    public function fetchNum( $rawQuery, $params = [] ){
-        $stmt = $this->query( $rawQuery, $params );
-        return $stmt->fetchAll( PDO::FETCH_NUM );
-    }
-    
-    public function fetchObj( $rawQuery, $params = [] ){
-        $stmt = $this->query( $rawQuery, $params );
-        return $stmt->fetchAll( PDO::FETCH_OBJ );
-    }
 
     public function singleFetchAssoc( $rawQuery, $params = [] ){
         $rawQuery .= " LIMIT 1";
         $stmt = $this->query( $rawQuery, $params );
         $data = $stmt->fetchAll( PDO::FETCH_ASSOC );
-        return $data[0];
+        if( isset($data[0]) ){
+            return $data[0];
+        }else{
+            return false;
+        }
     }
 
     public function select( $fields, $table, $parameters, $options = [ 'operator' => 'AND' ]  ) {
@@ -125,11 +119,10 @@ class Sql extends PDO {
     public function call( $procedure, $arguments, $single = false ) {
         $cmd = "CALL " . $procedure
             . "(" . $this->concatArrayValues( $arguments ) . ")";
-        if( $single ){
-            $res = $this->fetchNum( $cmd );
-            return $res[0][0];
+        $res = $this->fetchAssoc($cmd);
+        if($single){
+            return $res[0];
         }else{
-            $res = $this->fetchAssoc($cmd);
             return $res;
         }
     }
