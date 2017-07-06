@@ -23,7 +23,14 @@ class Sql extends PDO {
     }
 
     private function setParam($statment, $key, $value) {
-        $statment->bindParam($key, $value);
+        if( is_string($value) ){
+            $statment->bindParam($key, $value);
+        }
+        if( is_array($value) ){
+            for( $x=0; $x<count($value); $x++ ){
+                $statment->bindParam( $key.$x, $value[$x] );
+            }
+        }
     }
 
     private function setParams($statment, $parameters = []) {
@@ -36,6 +43,11 @@ class Sql extends PDO {
         $stmt = $this->sql->prepare( $raw );
         $this->setParams( $stmt, $params );
         $data = $stmt->execute();
+        $arr = $stmt->errorInfo();
+        if( isset($arr[0]) && ($arr[0] > 0)){
+            echo "\nPDOStatement::errorInfo():\n";
+            print_r($arr);
+        }
         return $stmt;
     }
 
@@ -176,10 +188,30 @@ class Sql extends PDO {
             if( ( $c >= 1 ) &&( $c<$last ) ){
                 $string .= " AND ";
             }
-            if( isset( $options['like'] ) ){
-                $string .= $key . ' LIKE :' . $key;
-            }else{
-                $string .= $key . ' = :' . $key;
+            if( is_string( $value ) ){
+                if( !isset( $options['comparisonOperators'][$c] ) ){
+                    $options['comparisonOperators'][$c] = "=";
+                }
+                if( isset( $options['like'] ) ){
+                    $string .= $key . ' LIKE :' . $key;
+                }else{
+                    $string .= $key . ' ' . $options['comparisonOperators'][$c] . ' :' . $key;
+                }
+            }
+            if( is_array($value) ){
+                for( $x=0; $x < count($value); $x++  ){
+                    if( $x >= 1 ) {
+                        $string .= " AND ";
+                    }
+                    if( !isset( $options['comparisonOperators'][$c][$x] ) ){
+                        $options['comparisonOperators'][$c][$x] = "=";
+                    }
+                    if( isset( $options['like'] ) ){
+                        $string .= $key . ' LIKE :' . $key . $x;
+                    }else{
+                        $string .= $key . ' ' . $options['comparisonOperators'][$c][$x] . ' :' . $key . $x;
+                    }
+                }
             }
             $c++;
         }
@@ -194,10 +226,30 @@ class Sql extends PDO {
             if( ( $c >= 1 ) &&( $c<$last ) ){
                 $string .= " OR ";
             }
-            if( isset( $options['like'] ) ){
-                $string .= $key . ' LIKE :' . $key;
-            }else{
-                $string .= $key . ' = :' . $key;
+            if( is_string( $value ) ){
+                if( !isset( $options['comparisonOperators'][$c] ) ){
+                    $options['comparisonOperators'][$c] = "=";
+                }
+                if( isset( $options['like'] ) ){
+                    $string .= $key . ' LIKE :' . $key;
+                }else{
+                    $string .= $key . ' ' . $options['comparisonOperators'][$c] . ' :' . $key;
+                }
+            }
+            if( is_array($value) ){
+                for( $x=0; $x < count($value); $x++  ){
+                    if( $x >= 1 ) {
+                        $string .= " OR ";
+                    }
+                    if( !isset( $options['comparisonOperators'][$c][$x] ) ){
+                        $options['comparisonOperators'][$c][$x] = "=";
+                    }
+                    if( isset( $options['like'] ) ){
+                        $string .= $key . ' LIKE :' . $key . $x;
+                    }else{
+                        $string .= $key . ' ' . $options['comparisonOperators'][$c][$x] . ' :' . $key . $x;
+                    }
+                }
             }
             $c++;
         }
@@ -212,10 +264,30 @@ class Sql extends PDO {
             if( ( $c >= 1 ) &&( $c<$last ) ){
                 $string .= $options['conditionalList'][$c];
             }
-            if( isset( $options['like'] ) ){
-                $string .= $key . ' LIKE :' . $key;
-            }else{
-                $string .= $key . ' = :' . $key;
+            if( is_string( $value ) ){
+                if( !isset( $options['comparisonOperators'][$c] ) ){
+                    $options['comparisonOperators'][$c] = "=";
+                }
+                if( isset( $options['like'] ) ){
+                    $string .= $key . ' LIKE :' . $key;
+                }else{
+                    $string .= $key . ' ' . $options['comparisonOperators'][$c] . ' :' . $key;
+                }
+            }
+            if( is_array($value) ){
+                for( $x=0; $x < count($value); $x++  ){
+                    if( $x >= 1 ) {
+                        $string .= $options['conditionalList'][$c][$x];
+                    }
+                    if( !isset( $options['comparisonOperators'][$c][$x] ) ){
+                        $options['comparisonOperators'][$c][$x] = "=";
+                    }
+                    if( isset( $options['like'] ) ){
+                        $string .= $key . ' LIKE :' . $key . $x;
+                    }else{
+                        $string .= $key . ' ' . $options['comparisonOperators'][$c][$x] . ' :' . $key . $x;
+                    }
+                }
             }
             $c++;
         }
@@ -228,9 +300,33 @@ class Sql extends PDO {
         $last = count( $array );
         foreach( $array as $key => $value ){
             if( ( $c >= 1 ) &&( $c<$last ) ){
-                $string .= ", ";
+                $string .= " , ";
             }
-            $string .= $key . ' = :' . $key;
+            if( is_string( $value ) ){
+                if( !isset( $options['comparisonOperators'][$c] ) ){
+                    $options['comparisonOperators'][$c] = "=";
+                }
+                if( isset( $options['like'] ) ){
+                    $string .= $key . ' LIKE :' . $key;
+                }else{
+                    $string .= $key . ' ' . $options['comparisonOperators'][$c] . ' :' . $key;
+                }
+            }
+            if( is_array($value) ){
+                for( $x=0; $x < count($value); $x++  ){
+                    if( $x >= 1 ) {
+                        $string .= " , ";
+                    }
+                    if( !isset( $options['comparisonOperators'][$c][$x] ) ){
+                        $options['comparisonOperators'][$c][$x] = "=";
+                    }
+                    if( isset( $options['like'] ) ){
+                        $string .= $key . ' LIKE :' . $key . $x;
+                    }else{
+                        $string .= $key . ' ' . $options['comparisonOperators'][$c][$x] . ' :' . $key . $x;
+                    }
+                }
+            }
             $c++;
         }
         return $string;
