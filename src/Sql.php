@@ -158,8 +158,7 @@ class Sql extends PDO {
     public function call( $procedure, $arguments, $single = false ) {
         $cmd = "CALL " . $procedure
             . "(" . $this->concatArrayValues( $arguments ) . ")";
-        $res = $this->fetchAssoc($cmd);
-        if($single){
+        if( $single ){
             $res = $this->fetchNum( $cmd );
             return $res[0][0];
         }else{
