@@ -102,6 +102,7 @@ class Sql extends PDO {
         if( isset( $options['additionalCommand'] ) ){
             $cmd .= $options['additionalCommand'];
         }
+
         if( isset($options['index']) ){
             return $this->IndexFetch( $cmd, $parameters, $options['index'] );
         }
