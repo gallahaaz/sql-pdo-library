@@ -99,7 +99,6 @@ class Sql extends PDO {
         if( isset( $parameters ) ){
             $cmd .= " WHERE " . $this->$concatCommand( $parameters, $options );
         }
-
         if( isset( $options['additionalCommand'] ) ){
             $cmd .= $options['additionalCommand'];
         }
@@ -158,7 +157,8 @@ class Sql extends PDO {
     public function call( $procedure, $arguments, $single = false ) {
         $cmd = "CALL " . $procedure
             . "(" . $this->concatArrayValues( $arguments ) . ")";
-        if( $single ){
+        $res = $this->fetchAssoc($cmd);
+        if($single){
             $res = $this->fetchNum( $cmd );
             return $res[0][0];
         }else{
@@ -258,7 +258,7 @@ class Sql extends PDO {
         $last = count( $array );
         foreach( $array as $key => $value ){
             if( ( $c >= 1 ) &&( $c<$last ) ){
-                $string .= $options['conditionalList'][$c];
+                $string .= ' ' . $options['conditionalList'][$c] . ' ';
             }
             if( is_array($value) ){
                 for( $x=0; $x < count($value); $x++  ){
