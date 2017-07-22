@@ -86,8 +86,22 @@ class Sql extends PDO {
         }
         return $return;
     }
+    
+    public function insert( $table, $columns, $values ) {
+        $cmd = "INSERT INTO "
+            . $table
+            . " (" . $this->concatArray($columns) . ") "
+            . " VALUES "
+            . " (" . $this->concatParams($columns) . ");";
+        $keys = [];
+        foreach( $columns as $key ){
+            array_push( $keys, ':' . $key );
+        }
+        $parameters = array_combine( $keys, $values );
+        return $this->query( $cmd, $parameters );
+    }
 
-    public function select( $fields, $table, $parameters, $options = [ 'operator' => 'AND' ]  ) {
+    public function select( $fields, $table, $parameters, $options = [ 'operator' => 'AND' ] ) {
         $cmd = "SELECT "
             . $this->concatArray( $fields )
             . " FROM "
@@ -115,33 +129,25 @@ class Sql extends PDO {
         }
 
     }
-
-    public function insert( $table, $columns, $values ) {
-        $cmd = "INSERT INTO "
-            . $table
-            . " (" . $this->concatArray($columns) . ") "
-            . " VALUES "
-            . " (" . $this->concatParams($columns) . ");";
-        $keys = [];
-        foreach( $columns as $key ){
-            array_push( $keys, ':' . $key );
-        }
-        $parameters = array_combine( $keys, $values );
-        return $this->query( $cmd, $parameters );
-    }
     
-    public function update( $table, $set, $where ) {
+    public function update( $table, $set, $where, $options = [ 'operator' => 'AND' ]) {
         $cmd = "UPDATE "
             . $table
             . " SET "
             . $this->concatSetParams( $set )
-            . " WHERE "
-            . $this->concatAndParams( $where );
-        $parameters = [];
-        $combined = array_merge($set, $where);
-        foreach( $combined as $key => $value ){
+            . " WHERE ";
+        if( empty( $options['operator'] ) ){
+            $options['operator'] = "AND";
+        }
+        $concatCommand = 'concat' . ucfirst( $options['operator'] ) . 'Params';
+        if( isset( $where ) ){
+            $cmd .= $this->$concatCommand( $where, $options );
+        }
+        
+        foreach( $where as $key => $value ){
             $parameters[":" . $key] = $value;
         }
+        
         $this->query( $cmd, $parameters );
     }
 
@@ -289,10 +295,10 @@ class Sql extends PDO {
                     if( $x >= 1 ) {
                         $string .= " , ";
                     }
-                    $string .= $this->boundKeyString( $key, $string, $options['comparisonOperators'][$c][$x] );
+                    $string .= $key . ' = ' . $value[$x];
                 }
             }else{
-                $string .= $this->boundKeyString( $key, $string, $options['comparisonOperators'][$c] );
+                $string .= $key . ' = ' . $value;
             }
             $c++;
         }
