@@ -15,9 +15,10 @@ class Sql extends PDO {
     public function __construct() {
         try {
             $this->sql = new PDO('mysql:host=' . DBHOSTNAME . ';dbname=' . DBSCHEMA . ';port=' . DBPORT, DBUSER, DBPASSWORD );
-        } catch (Exception $e) {
+            $this->sql->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        } catch (PDOException $e) {
             //echo 'Erro ao conectar' . $e;
-            die($e->getMessage());
+            echo $e->getMessage();
             //exit();
         }
     }
@@ -33,15 +34,21 @@ class Sql extends PDO {
     }
 
     private function setParams($statment, $parameters = []) {
-        foreach ( $parameters as $key => $value ) {
-            $this->setParam($statment, $key, $value);
+        if( ( isset( $parameters ) ) && is_array( $parameters ) ){
+            foreach ( $parameters as $key => $value ) {
+                $this->setParam($statment, $key, $value);
+            }
         }
     }
 
     public function query( $raw, $params = [] ) {
-        $stmt = $this->sql->prepare( $raw );
-        $this->setParams( $stmt, $params );
-        $data = $stmt->execute();
+        try{
+            $stmt = $this->sql->prepare( $raw );
+            $this->setParams( $stmt, $params );
+            $data = $stmt->execute();
+        }catch( PDOException $e ) {
+            echo $e->getMessage();
+        }
         $arr = $stmt->errorInfo();
         if( isset($arr[0]) && ($arr[0] > 0)){
             echo "\nPDOStatement::errorInfo():\n";
@@ -86,22 +93,8 @@ class Sql extends PDO {
         }
         return $return;
     }
-    
-    public function insert( $table, $columns, $values ) {
-        $cmd = "INSERT INTO "
-            . $table
-            . " (" . $this->concatArray($columns) . ") "
-            . " VALUES "
-            . " (" . $this->concatParams($columns) . ");";
-        $keys = [];
-        foreach( $columns as $key ){
-            array_push( $keys, ':' . $key );
-        }
-        $parameters = array_combine( $keys, $values );
-        return $this->query( $cmd, $parameters );
-    }
 
-    public function select( $fields, $table, $parameters, $options = [ 'operator' => 'AND' ] ) {
+    public function select( $fields, $table, $parameters, $options = [ 'operator' => 'AND' ]  ) {
         $cmd = "SELECT "
             . $this->concatArray( $fields )
             . " FROM "
@@ -129,25 +122,39 @@ class Sql extends PDO {
         }
 
     }
+
+    public function insert( $table, $columns, $values, $last_insert = FALSE ) {
+        $cmd = "INSERT INTO "
+            . $table
+            . " (" . $this->concatArray($columns) . ") "
+            . " VALUES "
+            . " (" . $this->concatParams($columns) . ");";
+        $keys = [];
+        foreach( $columns as $key ){
+            array_push( $keys, ':' . $key );
+        }
+        $parameters = array_combine( $keys, $values );
+        if( !$last_insert ){
+            return $this->query( $cmd, $parameters );
+        }else{
+            $this->query( $cmd, $parameters );
+            return $this->sql->last_insert;
+        }
+    }
     
-    public function update( $table, $set, $where, $options = [ 'operator' => 'AND' ]) {
+    public function update( $table, $set, $where, $options ) {
         $cmd = "UPDATE "
             . $table
             . " SET "
-            . $this->concatSetParams( $set )
-            . " WHERE ";
-        if( empty( $options['operator'] ) ){
-            $options['operator'] = "AND";
-        }
-        $concatCommand = 'concat' . ucfirst( $options['operator'] ) . 'Params';
-        if( isset( $where ) ){
-            $cmd .= $this->$concatCommand( $where, $options );
-        }
-        
-        foreach( $where as $key => $value ){
+            . $this->concatSetParams( $set, $options )
+            . " WHERE "
+            . $this->concatAndParams( $where );
+        echo $cmd;
+        $parameters = [];
+        $combined = array_merge($set, $where);
+        foreach( $combined as $key => $value ){
             $parameters[":" . $key] = $value;
         }
-        
         $this->query( $cmd, $parameters );
     }
 
@@ -225,7 +232,7 @@ class Sql extends PDO {
                         $string .= " AND ";
                     }
                     $comparisonOperator = ( isset( $options['comparisonOperators'][$c][$x] ) ? $options['comparisonOperators'][$c][$x] : '=' );
-                    $string .= $this->boundKeyString( $key, $string, $comparisonOperators );
+                    $string .= $this->boundKeyString( $key, $string, $comparisonOperator );
                 }
             }else{
                 $comparisonOperator = ( isset( $options['comparisonOperators'][$c] ) ? $options['comparisonOperators'][$c] : '=' );
@@ -249,10 +256,12 @@ class Sql extends PDO {
                     if( $x >= 1 ) {
                         $string .= " OR ";
                     }
-                    $string .= $this->boundKeyString( $key, $string, $options['comparisonOperators'][$c][$x] );
+                    $comparisonOperator = ( isset( $options['comparisonOperators'][$c][$x] ) ? $options['comparisonOperators'][$c][$x] : '=' );
+                    $string .= $this->boundKeyString( $key, $string, $comparisonOperator );
                 }
             }else{
-                $string .= $this->boundKeyString( $key, $string, $options['comparisonOperators'][$c] );
+                $comparisonOperator = ( isset( $options['comparisonOperators'][$c] ) ? $options['comparisonOperators'][$c] : '=' );
+                $string .= $this->boundKeyString( $key, $string, $comparisonOperator );
             }
             $c++;
         }
@@ -272,10 +281,12 @@ class Sql extends PDO {
                     if( $x >= 1 ) {
                         $string .= $options['conditionalList'][$c][$x];
                     }
-                    $string .= $this->boundKeyString( $key, $string, $options['comparisonOperators'][$c][$x] );
+                    $comparisonOperator = ( isset( $options['comparisonOperators'][$c][$x] ) ? $options['comparisonOperators'][$c][$x] : '=' );
+                    $string .= $this->boundKeyString( $key, $string, $comparisonOperator );
                 }
             }else{
-                $string .= $this->boundKeyString( $key, $string, $options['comparisonOperators'][$c] );
+                $comparisonOperator = ( isset( $options['comparisonOperators'][$c] ) ? $options['comparisonOperators'][$c] : '=' );
+                $string .= $this->boundKeyString( $key, $string, $comparisonOperator );
             }
             $c++;
         }
@@ -295,10 +306,12 @@ class Sql extends PDO {
                     if( $x >= 1 ) {
                         $string .= " , ";
                     }
-                    $string .= $key . ' = ' . $value[$x];
+                    $comparisonOperator = ( isset( $options['comparisonOperators'][$c][$x] ) ? $options['comparisonOperators'][$c][$x] : '=' );
+                    $string .= $this->boundKeyString( $key, $string, $comparisonOperator );
                 }
             }else{
-                $string .= $key . ' = ' . $value;
+                $comparisonOperator = ( isset( $options['comparisonOperators'][$c] ) ? $options['comparisonOperators'][$c] : '=' );
+                $string .= $this->boundKeyString( $key, $string, $comparisonOperator );
             }
             $c++;
         }
