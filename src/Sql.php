@@ -138,11 +138,11 @@ class Sql extends PDO {
             return $this->query( $cmd, $parameters );
         }else{
             $this->query( $cmd, $parameters );
-            return $this->sql->last_insert;
+            return $this->sql->lastInsertId();
         }
     }
     
-    public function update( $table, $set, $where, $options ) {
+    public function update( $table, $set, $where, $options = [] ) {
         $cmd = "UPDATE "
             . $table
             . " SET "
