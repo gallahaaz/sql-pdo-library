@@ -149,7 +149,6 @@ class Sql extends PDO {
             . $this->concatSetParams( $set, $options )
             . " WHERE "
             . $this->concatAndParams( $where );
-        echo $cmd;
         $parameters = [];
         $combined = array_merge($set, $where);
         foreach( $combined as $key => $value ){
