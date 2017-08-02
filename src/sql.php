@@ -23,9 +23,9 @@ class Sql extends PDO {
         }
     }
 
-    private function setParam($statment, $key, $value) {
+    private function setParam( $statment, $key, $value ) {
         if( is_array($value) ){
-            for( $x=0; $x<count($value); $x++ ){
+            for( $x=0; $x<=count($value); $x++ ){
                 $statment->bindParam( $key.$x, $value[$x] );
             }
         }else{
@@ -33,7 +33,7 @@ class Sql extends PDO {
         }
     }
 
-    private function setParams($statment, $parameters = []) {
+    private function setParams( $statment, $parameters = [] ) {
         if( ( isset( $parameters ) ) && is_array( $parameters ) ){
             foreach ( $parameters as $key => $value ) {
                 $this->setParam($statment, $key, $value);
@@ -222,7 +222,7 @@ class Sql extends PDO {
         $last = count( $array );
         $c = 0;
         foreach( $array as $key => $value ){
-            if( ( $c >= 1 ) &&( $c<$last ) ){
+            if( ( $c >= 1 ) && ( $c<$last ) ){
                 $string .= " AND ";
             }
             if( is_array($value) ){
@@ -273,12 +273,12 @@ class Sql extends PDO {
         $last = count( $array );
         foreach( $array as $key => $value ){
             if( ( $c >= 1 ) &&( $c<$last ) ){
-                $string .= ' ' . $options['conditionalList'][$c] . ' ';
+                $string .= ' ' . $options['conditionalList'][$c-1] . ' ';
             }
             if( is_array($value) ){
                 for( $x=0; $x < count($value); $x++  ){
                     if( $x >= 1 ) {
-                        $string .= $options['conditionalList'][$c][$x];
+                        $string .= $options['conditionalList'][$c][$x-1];
                     }
                     $comparisonOperator = ( isset( $options['comparisonOperators'][$c][$x] ) ? $options['comparisonOperators'][$c][$x] : '=' );
                     $string .= $this->boundKeyString( $key, $string, $comparisonOperator );
