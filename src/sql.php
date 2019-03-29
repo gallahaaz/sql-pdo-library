@@ -116,6 +116,7 @@ class Sql extends PDO {
         $this->query( $cmd, $parameters );
     }
 
+    //Deleta informações da tabela, com base nas informações informadas no Where
     public function delete( $table, $where ) {
         $cmd = "DELETE FROM " . $table
             . " WHERE " . $this->concatAndParams( $where );
@@ -126,6 +127,7 @@ class Sql extends PDO {
         $this->query( $cmd, $parameters );
     }
 
+    //executa procedures cadastradas na base de dados
     public function call( $procedure, $arguments, $single = false ) {
         $cmd = "CALL " . $procedure
             . "(" . $this->concatArrayValues( $arguments ) . ")";
